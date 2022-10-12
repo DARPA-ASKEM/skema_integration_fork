@@ -10,7 +10,7 @@ import org.clulab.aske.automates.OdinEngine
 import org.clulab.aske.automates.alignment.{Aligner, AlignmentHandler}
 import org.clulab.aske.automates.apps.ExtractAndAlign.config
 import org.clulab.aske.automates.apps.{AutomatesExporter, ExtractAndAlign}
-import org.clulab.aske.automates.attachments.MentionLocationAttachment
+import org.clulab.aske.automates.attachments.{GroundingAttachment, MentionLocationAttachment}
 import org.clulab.aske.automates.cosmosjson.CosmosJsonProcessor
 import org.clulab.aske.automates.data.CosmosJsonDataLoader
 import org.clulab.aske.automates.data.ScienceParsedDataLoader
@@ -29,6 +29,8 @@ import org.clulab.utils.AlignmentJsonUtils.SeqOfGlobalVariables
 import org.clulab.utils.{AlignmentJsonUtils, DisplayUtils}
 import org.slf4j.{Logger, LoggerFactory}
 import org.json4s
+import org.ml4ai.grounding.{GroundingCandidate, MiraEmbeddingsGrounder}
+//import org.ml4ai.grounding.MiraEmbeddingsGrounder
 import play.api.mvc._
 import play.api.libs.json._
 
@@ -47,6 +49,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
   val readerType: String = generalConfig[String]("ReaderType")
   val defaultConfig: Config = generalConfig[Config](readerType)
   val config: Config = defaultConfig.withValue("preprocessorType", ConfigValueFactory.fromAnyRef("PassThrough"))
+  val groundingConfig = generalConfig.getConfig("Grounding")
   val ieSystem = OdinEngine.fromConfig(config)
   var proc = ieSystem.proc
   val serializer = JSONSerializer
@@ -66,6 +69,9 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
   private val groundToWikiDefault: Boolean = generalConfig[Boolean]("apps.groundToWiki")
   private val saveWikiGroundingsDefault: Boolean = generalConfig[Boolean]("apps.saveWikiGroundingsDefault")
 
+  private val ontologyFilePath = groundingConfig.getString("ontologyPath")
+  private val groundingAssignmentThreshold = groundingConfig.getDouble("assignmentThreshold")
+  private val grounder = MiraEmbeddingsGrounder(new File(ontologyFilePath), None)
   logger.info("Completed Initialization ...")
   // -------------------------------------------------
 
@@ -225,6 +231,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
   def cosmos_json_to_mentions: Action[AnyContent] = Action { request =>
     val data = request.body.asJson.get.toString()
 
+
     val pathJson = ujson.read(data)
     val jsonPath = pathJson("pathToCosmosJson").str
     logger.info(s"Extracting mentions from $jsonPath")
@@ -240,7 +247,21 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     // extract mentions form each text block
     val mentions = for (tf <- textsAndFilenames) yield {
       val Array(text, filename) = tf.split("<::>")
-      ieSystem.extractFromText(text, keepText = true, Some(filename))
+      // Extract mentions and apply grounding
+      ieSystem.extractFromText(text, keepText = true, Some(filename)) map {
+        case tbm:TextBoundMention => {
+          val topGroundingCandidates = grounder.groundingCandidates(tbm.text).filter{
+            case GroundingCandidate(_, score) => score >= groundingAssignmentThreshold
+          }
+
+
+          if(topGroundingCandidates.nonEmpty)
+            tbm.withAttachment(new GroundingAttachment(topGroundingCandidates))
+          else
+            tbm
+        }
+        case m => m
+      }
     }
 
     // store location information from cosmos as an attachment for each mention
@@ -261,9 +282,6 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
       }
     }
 
-
-//    val outFile = pathJson("outfile").str
-//    AutomatesExporter(outFile).export(mentionsWithLocations)
 
     val exportedData  = ujson.write(AutomatesJSONSerializer.serializeMentions(mentionsWithLocations))
 

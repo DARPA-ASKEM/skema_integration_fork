@@ -20,27 +20,23 @@ class MiraEmbeddingsGrounder(groundingConcepts:Seq[GroundingConcept], embeddings
    */
   override def groundingCandidates(text: String, k: Int = 1): List[GroundingCandidate] = {
     // Generate the embedding of text
-    val thisTextEmbedding = generateEmbedding(text, embeddingsModel)
-    // Loop over the grounding concepts and get cosine similarity between input embedding and each concept
-    val cosineSimilarities =
-    for (groundingConcept <- groundingConcepts)  yield {
-      // clone groundingConcept's embedding and normalize it
-      // normalize text embedding
-      // compute dot procuct
-      val normalizedConceptEmbedding = groundingConcept.embedding.get.clone()
-      WordEmbeddingMap.norm(normalizedConceptEmbedding)
-      WordEmbeddingMap.norm(thisTextEmbedding)
-      WordEmbeddingMap.dotProduct(normalizedConceptEmbedding, thisTextEmbedding)
-    }
+    val queryEmbedding = generateNormalizedEmbedding(text, embeddingsModel)
+    // Normalize the query embedding to speed up the cosine similarity computation
+    WordEmbeddingMap.norm(queryEmbedding)
+      (for (groundingConcept <- groundingConcepts.par) yield {
+        WordEmbeddingMap.dotProduct(groundingConcept.embedding.get, queryEmbedding)
+      }).seq
     // Choose the top k and return GroundingCandidates
-    // val (addSorted, indices) = arr.zipWithIndex.sorted.unzip
+    // The sorted values are reversed to have it on decreasing size
     val (sortedCosineSimilarities, sortedIndices) = cosineSimilarities.zipWithIndex.sorted.reverse.unzip
-//    sortedCosineSimilarities[sortedIndices[1:k]]
 
-    val topKindices = sortedIndices.take(k)
+
+    val topKIndices = sortedIndices.take(k)
     val topSimilarities = sortedCosineSimilarities.take(k)
-    val topConcepts = topKindices.map(groundingConcepts)
-    topConcepts.zip(topSimilarities).map{case (concept, similarity) => GroundingCandidate(concept, similarity)}.toList
+    val topConcepts = topKIndices.map(groundingConcepts)
+    (topConcepts zip topSimilarities) map {
+      case (concept, similarity) => GroundingCandidate(concept, similarity)
+    }
   }
 }
 
@@ -66,7 +62,10 @@ object MiraEmbeddingsGrounder{
               case _ => None
             },
             i.obj.get("synonyms") match {
-              case Some(syns) => Some(syns.arr map (_.str))
+              case Some(syns) => Some(syns.arr map {
+                case s:ujson.Obj => s.obj.get("value").toString
+                case s:ujson.Value => s.toString
+              })
               case _ => None
             },
             embedding = None
