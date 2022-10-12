@@ -26,13 +26,14 @@ class TestMiraEmbeddingsGrounder extends Test {
   // So we can build it once and reuse it as necessary in the suite
   //lambda = 1,10,100
   val lambda = 10
+  // Lazily load the grounder. We assume it's state and behavior is immutable
+  // So we can build it once and reuse it as necessary in the suite
+  val miraEmbeddingsGrounder: MiraEmbeddingsGrounder = {
+    val config = ConfigFactory.load().getConfig("Grounding")
+    val ontologyPath = config.getString("ontologyPath")
+    //    val embeddingsPath = config.getString("embeddingsPath")
 
-    val miraEmbeddingsGrounder: MiraEmbeddingsGrounder = {
-      val config = ConfigFactory.load().getConfig("Grounding")
-      val ontologyPath = config.getString("ontologyPath")
-      val embeddingsPath = config.getString("embeddingsPath")
-
-    MiraEmbeddingsGrounder(new File(ontologyPath), new File(embeddingsPath), lambda)
+    MiraEmbeddingsGrounder(new File(ontologyPath), None, lambda)
   }
 
 
