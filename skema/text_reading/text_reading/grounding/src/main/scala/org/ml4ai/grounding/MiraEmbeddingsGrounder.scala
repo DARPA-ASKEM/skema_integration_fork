@@ -9,7 +9,7 @@ import ujson.Arr
 import java.io.File
 import scala.::
 
-class MiraEmbeddingsGrounder(groundingConcepts:Seq[GroundingConcept], embeddingsModel:WordEmbeddingMap, lambda : Float) extends Grounder {
+class MiraEmbeddingsGrounder(groundingConcepts:Seq[GroundingConcept], embeddingsModel:WordEmbeddingMap, lambda:Float) extends Grounder {
 
   /**
     * Returns an ordered sequence with the top k grounding candidates for the input
@@ -148,7 +148,7 @@ object MiraEmbeddingsGrounder{
     averageEmbeddings(wordEmbeddings)
   }
 
-  def addEmbeddingToConcept(concept: GroundingConcept, embeddingsModel: WordEmbeddingMap, lambda : Float): GroundingConcept = {
+  def addEmbeddingToConcept(concept: GroundingConcept, embeddingsModel: WordEmbeddingMap, lambda: Float): GroundingConcept = {
 
 
     val embedding = generateNormalizedEmbedding(concept.name.toLowerCase, embeddingsModel)
@@ -178,7 +178,7 @@ object MiraEmbeddingsGrounder{
   }
 
   // TODO: Pre-process the embedidngs for the ontology offline
-  def createOntologyEmbeddings(concepts:Seq[GroundingConcept], embeddingsModel:WordEmbeddingMap, lambda : Float):Seq[GroundingConcept] = {
+  def createOntologyEmbeddings(concepts:Seq[GroundingConcept], embeddingsModel:WordEmbeddingMap, lambda: Float):Seq[GroundingConcept] = {
     concepts.map(concept => addEmbeddingToConcept(concept, embeddingsModel,lambda))
   }
 
