@@ -7,5 +7,20 @@ steps:
 - name: test_rust_components
   image: rust:latest
   commands:
-  - cd skema/skema-rs
+  - cd abcskema/skema-rs
   - cargo test --verbose --all
+
+- name: notify
+  image: drillster/drone-email
+  environment:
+    EMAIL_HOST:
+      from_secret: drone_email_host
+    EMAIL_USERNAME:
+      from_secret: drone_email_username
+    EMAIL_PASSWORD:
+      from_secret: drone_email_password
+  settings:
+    from: ci.kraken.sista.arizona.edu@gmail.com
+  when:
+    status:
+      - failure
