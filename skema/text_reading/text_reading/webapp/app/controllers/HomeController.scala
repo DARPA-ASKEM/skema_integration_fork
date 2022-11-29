@@ -6,17 +6,7 @@ import ai.lum.common.FileUtils._
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 
 import javax.inject._
-import org.clulab.aske.automates.OdinEngine
-import org.clulab.aske.automates.alignment.{Aligner, AlignmentHandler}
-import org.clulab.aske.automates.apps.ExtractAndAlign.config
-import org.clulab.aske.automates.apps.{AutomatesExporter, ExtractAndAlign}
-import org.clulab.aske.automates.attachments.{GroundingAttachment, MentionLocationAttachment}
-import org.clulab.aske.automates.cosmosjson.CosmosJsonProcessor
-import org.clulab.aske.automates.data.CosmosJsonDataLoader
-import org.clulab.aske.automates.data.ScienceParsedDataLoader
-import org.clulab.aske.automates.scienceparse.ScienceParseClient
-import org.clulab.aske.automates.serializer.AutomatesJSONSerializer
-import org.clulab.grounding.{SVOGrounder, WikidataGrounder, sparqlWikiResult}
+import org.ml4ai.skema.text_reading.apps.ExtractAndAlign.config
 import org.clulab.odin.serialization.json.JSONSerializer
 import upickle.default._
 
@@ -25,11 +15,18 @@ import ujson.json4s.Json4sJson
 import ujson.play.PlayJson
 import org.clulab.odin.{EventMention, Mention, RelationMention, TextBoundMention}
 import org.clulab.processors.{Document, Sentence}
-import org.clulab.utils.AlignmentJsonUtils.SeqOfGlobalVariables
-import org.clulab.utils.{AlignmentJsonUtils, DisplayUtils}
 import org.slf4j.{Logger, LoggerFactory}
 import org.json4s
-import org.ml4ai.grounding.{GroundingCandidate, MiraEmbeddingsGrounder}
+import org.ml4ai.grounding.{GroundingCandidate, MiraEmbeddingsGrounder, SVOGrounder, WikidataGrounder, sparqlWikiResult}
+import org.ml4ai.skema.text_reading.OdinEngine
+import org.ml4ai.skema.text_reading.alignment.{Aligner, AlignmentHandler}
+import org.ml4ai.skema.text_reading.apps.{AutomatesExporter, ExtractAndAlign}
+import org.ml4ai.skema.text_reading.attachments.{GroundingAttachment, MentionLocationAttachment}
+import org.ml4ai.skema.text_reading.cosmosjson.CosmosJsonProcessor
+import org.ml4ai.skema.text_reading.data.{CosmosJsonDataLoader, ScienceParsedDataLoader}
+import org.ml4ai.skema.text_reading.scienceparse.ScienceParseClient
+import org.ml4ai.skema.text_reading.serializer.AutomatesJSONSerializer
+import org.ml4ai.skema.text_reading.utils.{AlignmentJsonUtils, DisplayUtils}
 //import org.ml4ai.grounding.MiraEmbeddingsGrounder
 import play.api.mvc._
 import play.api.libs.json._
@@ -71,7 +68,10 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
 
   private val ontologyFilePath = groundingConfig.getString("ontologyPath")
   private val groundingAssignmentThreshold = groundingConfig.getDouble("assignmentThreshold")
-  private val grounder = MiraEmbeddingsGrounder(new File(ontologyFilePath), None, lambda = 10)
+//<<<<<<< HEAD
+//  private val grounder = MiraEmbeddingsGrounder(new File(ontologyFilePath), None, lambda = 10)
+//=======
+  private val grounder = MiraEmbeddingsGrounder(ontologyFilePath, None)
   logger.info("Completed Initialization ...")
   // -------------------------------------------------
 
@@ -248,7 +248,8 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     val mentions = for (tf <- textsAndFilenames) yield {
       val Array(text, filename) = tf.split("<::>")
       // Extract mentions and apply grounding
-      ieSystem.extractFromText(text, keepText = true, Some(filename)) map {
+
+      ieSystem.extractFromText(text, keepText = true, Some(filename)).par.map{
         case tbm:TextBoundMention => {
           val topGroundingCandidates = grounder.groundingCandidates(tbm.text).filter{
             case GroundingCandidate(_, score) => score >= groundingAssignmentThreshold
@@ -261,7 +262,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
             tbm
         }
         case m => m
-      }
+      }.seq
     }
 
     // store location information from cosmos as an attachment for each mention
@@ -483,7 +484,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     (doc, sorted)
   }
 
-  // Method where aske reader processing for webservice happens
+  // Method where skema reader processing for webservice happens
   def getOdinJsonMentions(ieSystem: OdinEngine, text: String, gazetteer: Option[Seq[String]] = None): org.json4s.JsonAST.JValue = {
 
     // preprocessing
