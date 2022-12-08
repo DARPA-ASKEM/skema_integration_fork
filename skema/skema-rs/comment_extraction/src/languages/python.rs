@@ -83,8 +83,6 @@ fn partial_line_comment(input: Span) -> IResult<Span, Statement> {
 }
 
 fn func_docstring(input: Span) -> IResult<Span, Statement> {
-    println!("func_docstring -----------------------");
-    println!(" input = {:?}",&input);
     let func_declaration = delimited(
         tuple((space0, tag("def "))),
         name,
@@ -108,8 +106,6 @@ fn func_docstring(input: Span) -> IResult<Span, Statement> {
 }
 
 fn class_docstring(input: Span) -> IResult<Span, Statement> {
-    println!("class_docstring -----------------------");
-    println!(" input = {:?}",&input);
     let class_declaration = delimited(
         tuple((space0, tag("class "))),
         name,
@@ -137,7 +133,8 @@ fn comment(input: Span) -> IResult<Span, Statement> {
 }
 
 fn docstring(input: Span) -> IResult<Span, Statement> {
-    println!("\n");
+    println!("----------------------------------------");
+    println!("input = {:?}\n",&input);
     alt((class_docstring, func_docstring))(input)
 }
 
