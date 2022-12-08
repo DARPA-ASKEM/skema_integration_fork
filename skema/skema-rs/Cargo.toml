@@ -2,6 +2,5 @@
 members = [
     "skema",
     "comment_extraction",
-    "class_extraction",
     "mathml"
 ]
