@@ -82,7 +82,9 @@ fn partial_line_comment(input: Span) -> IResult<Span, Statement> {
     ))
 }
 
-fn docstring(input: Span) -> IResult<Span, Statement> {
+fn func_docstring(input: Span) -> IResult<Span, Statement> {
+    println!("func_docstring -----------------------");
+    println!(" input = {:?}",&input);
     let func_declaration = delimited(
         tuple((space0, tag("def "))),
         name,
@@ -105,8 +107,38 @@ fn docstring(input: Span) -> IResult<Span, Statement> {
     ))
 }
 
+fn class_docstring(input: Span) -> IResult<Span, Statement> {
+    println!("class_docstring -----------------------");
+    println!(" input = {:?}",&input);
+    let class_declaration = delimited(
+        tuple((space0, tag("class "))),
+        name,
+        tuple((space0, take_until(":"), tag(":"), line_ending, space0)),
+    );
+    let (input, (class_name, docstring_contents, _, _)) =
+        tuple((class_declaration, triple_quoted_string, space0, line_ending))(input)?;
+    let object_name = class_name.to_string();
+    let contents: Vec<String> = docstring_contents
+        .to_string()
+        .split('\n')
+        .map(|x| x.to_string())
+        .collect();
+    Ok((
+        input,
+        Statement::Docstring {
+            object_name,
+            contents,
+        },
+    ))
+}
+
 fn comment(input: Span) -> IResult<Span, Statement> {
-    alt((docstring, whole_line_comment, partial_line_comment))(input)
+    alt((whole_line_comment, partial_line_comment))(input)
+}
+
+fn docstring(input: Span) -> IResult<Span, Statement> {
+    println!("\n");
+    alt((class_docstring, func_docstring))(input)
 }
 
 fn other(input: Span) -> IResult<Span, Statement> {
@@ -115,7 +147,7 @@ fn other(input: Span) -> IResult<Span, Statement> {
 }
 
 fn statement(input: Span) -> IResult<Span, Statement> {
-    alt((comment, other))(input)
+    alt((comment, docstring, other))(input)
 }
 
 fn comments(input: Span) -> IResult<Span, Comments> {
