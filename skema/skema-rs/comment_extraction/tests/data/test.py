@@ -1,7 +1,7 @@
 
-### Free range comment
+### Module comment
 
-'''Free range docstring '''
+''' Module docstring '''
 
 class OuterClass:
 
