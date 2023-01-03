@@ -32,6 +32,27 @@ pub enum EdgeType {
     Wire,
 }
 
+pub struct DBClient {
+    connection: Connection,
+}
+
+impl DBClient {
+    fn new(host: &str) -> Result<Self, MgError> {
+        let connect_params = ConnectParams {
+            host: Some(host.to_string()),
+            ..Default::default()
+        };
+        let connection = Connection::connect(&connect_params)?;
+        Ok(DBClient { connection })
+    }
+
+    fn execute(&mut self, query: &str) -> Result<(), MgError> {
+        self.connection.execute_without_results(query)?;
+        self.connection.commit()?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Node {
     pub n_type: String,
