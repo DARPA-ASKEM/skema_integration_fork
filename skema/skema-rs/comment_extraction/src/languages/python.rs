@@ -106,6 +106,8 @@ fn func_docstring(input: Span) -> IResult<Span, Statement> {
 }
 
 fn class_docstring(input: Span) -> IResult<Span, Statement> {
+    println!("class_docstring:");
+    println!("input = {:?}\n",&input);
     let class_declaration = delimited(
         tuple((space0, tag("class "))),
         name,
@@ -133,7 +135,7 @@ fn comment(input: Span) -> IResult<Span, Statement> {
 }
 
 fn docstring(input: Span) -> IResult<Span, Statement> {
-    println!("----------------------------------------");
+    println!("docstring:");
     println!("input = {:?}\n",&input);
     alt((class_docstring, func_docstring))(input)
 }
@@ -148,19 +150,21 @@ fn statement(input: Span) -> IResult<Span, Statement> {
 }
 
 fn comments(input: Span) -> IResult<Span, Comments> {
+    println!("comments:");
+    println!("input = {:?}\n",&input);
     fold_many0(statement, Comments::default, |mut acc: Comments, item| {
         match item {
-            Statement::Comment {
-                line_number,
-                contents,
-            } => {
-                acc.comments.push((line_number, contents));
-            }
             Statement::Docstring {
                 object_name,
                 contents,
             } => {
                 acc.docstrings.insert(object_name, contents);
+            }
+            Statement::Comment {
+                line_number,
+                contents,
+            } => {
+                acc.comments.push((line_number, contents));
             }
             _ => (),
         }
