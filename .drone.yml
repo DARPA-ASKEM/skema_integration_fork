@@ -40,7 +40,8 @@ steps:
   - apt-get update
   - apt-get -y install build-essential graphviz libgraphviz-dev
   - pip install -e .[dev]
-  - pytest
+    pip install pytest-cov pytest-xdist
+  - pytest --cov=skema skema/program_analysis/tests
   when:
     paths:
     - pyproject.toml
