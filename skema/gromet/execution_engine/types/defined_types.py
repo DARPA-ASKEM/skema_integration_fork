@@ -2,13 +2,6 @@ import numpy
 from typing import Union, List, Tuple, Dict, Set, Any
 from dataclasses import dataclass
 
-@dataclass(frozen=True)
-class Field:
-    name: str
-    type: str
-    variatic: bool = False
-    default_val: Any = None
-
 @dataclass
 class RecordField:
     name: str
@@ -23,5 +16,6 @@ class Record(object):
 Sequence = Union[range, List, numpy.ndarray, Tuple]
 Iterable = Union[Set, Sequence, Dict]
 Indexable = Union[Sequence, Dict, Record]
-
+DimensionalIndex = Union[slice, int]
+Hashable = Union[Tuple, str, int, bool]
 
