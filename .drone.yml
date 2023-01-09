@@ -5,7 +5,46 @@ name: skema-rs
 
 steps:
 - name: test_rust_components
-  image: rust:latest
+  image: rust:1.65
   commands:
+  - apt update && apt install -y cmake openssl libclang-13-dev
   - cd skema/skema-rs
   - cargo test --verbose --all
+  when:
+    paths:
+    - skema/skema-rs/**
+
+---
+kind: pipeline
+name: skema_tr
+
+steps:
+- name: test_scala
+  image: sbtscala/scala-sbt:openjdk-8u342_1.7.2_2.12.17
+  commands:
+  - cd skema/text_reading/text_reading
+  - export _JAVA_OPTIONS=-Xmx10g
+  - sbt webapp/test
+  when:
+    paths:
+      skema/text_reading/text_reading/**
+
+---
+kind: pipeline
+name: skema-py
+
+steps:
+- name: test_python
+  image: python:3.8-bullseye
+  commands:
+  - apt-get update
+  - apt-get -y install build-essential graphviz libgraphviz-dev
+  - pip install -e .[dev]
+  - pytest
+  when:
+    paths:
+    - pyproject.toml
+    - .drone.yml
+    - skema/program_analysis/**
+    - skema/gromet/**
+    - skema/model_assembly/**

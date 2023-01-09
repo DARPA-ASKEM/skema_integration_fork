@@ -1,11 +1,16 @@
+// Inclusion of additional modules
+pub mod database;
+pub mod services;
+pub mod config;
+
 // Stub for SKEMA library
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use serde_json;
+
 use serde_json::Value; // for json
 use std::string::ToString;
 
 /******** AST for the Gromet Data Structure ********/
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")] // Allows variants to match to uppercase json values
 #[derive(strum_macros::Display)] // Allows variants to be printed as strings if needed
 pub enum FnType {
@@ -13,7 +18,7 @@ pub enum FnType {
     Import,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 #[derive(strum_macros::Display)]
 pub enum FunctionType {
@@ -25,7 +30,7 @@ pub enum FunctionType {
     Literal,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct ValueL {
     pub value_type: String, // could be enum?
     #[serde(deserialize_with = "de_value")]
@@ -33,7 +38,7 @@ pub struct ValueL {
     pub value: String, // This is the generic problem. floats are exported as ints but rust exports as floats, making full generic isn't feasible since we don't know the number of instances before hand. So we import as a string to capture the data regardless of type.
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GrometBox {
     pub function_type: FunctionType,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,7 +51,7 @@ pub struct GrometBox {
     pub metadata: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GrometPort {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<u8>,
@@ -58,7 +63,7 @@ pub struct GrometPort {
     pub metadata: Option<u32>, // pof: 473, 582, b: 685, 702, 719, 736, most b's
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GrometWire {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -68,7 +73,7 @@ pub struct GrometWire {
     pub metadata: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GrometBoxLoop {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -83,7 +88,7 @@ pub struct GrometBoxLoop {
 }
 // condition, body_if, and body_else don't match online documentation
 // They are vecs of gromet boxes not integers...
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GrometBoxConditional {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -99,7 +104,7 @@ pub struct GrometBoxConditional {
     pub metadata: Option<u32>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct FunctionNet {
     pub b: [GrometBox; 1],
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -168,7 +173,7 @@ pub struct FunctionNet {
     pub metadata: Option<Vec<Metadata>>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Attribute {
     #[serde(rename = "type")]
     pub r#type: FnType,
@@ -179,7 +184,7 @@ pub struct Attribute {
     pub metadata: Option<Vec<Metadata>>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Provenance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
@@ -187,7 +192,7 @@ pub struct Provenance {
     pub timestamp: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Files {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uid: Option<String>,
@@ -197,7 +202,7 @@ pub struct Files {
     pub path: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata_type: Option<String>, // Could be enum?
@@ -229,7 +234,7 @@ pub struct Metadata {
     pub provenance: Option<Provenance>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Gromet {
     pub schema: String,
     pub schema_version: String,
@@ -252,18 +257,18 @@ fn de_value<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Err
         Value::Array(vl) => {
             // need to construct an instance of the vector here then stringify it
             let vals = serde_json::to_string(&vl).unwrap();
-            format!("{}", vals)
+            vals
         } // this will encode the vector as a string, re-serializing will be more difficult though
         Value::Object(map) => {
             let f = format!("{:?}", map);
-            format!("{}", f)
+            f
         } // this handles if the map is encoded as a map, make sure this still works with character matching..
         Value::String(strng) => {
             let mut it = strng.chars().peekable();
             let c = if let Some(&c) = it.peek() { c } else { '_' };
             match c {
                 '{' => {
-                    format!("{}", strng) // This handles if the map is encoded as a string
+                    strng.to_string() // This handles if the map is encoded as a string
                 }
                 _ => {
                     format!("{:?}", strng)
@@ -323,15 +328,15 @@ mod tests {
     use super::*;
     use std::fs;
 
-    fn test_roundtrip_serialization(path_example: &str) -> () {
+    fn test_roundtrip_serialization(path_example: &str) {
         let mut file_contents = fs::read_to_string(path_example).expect("Unable to read file");
 
         let res: Gromet = serde_json::from_str(&file_contents).expect("Unable to parse");
         let mut res_serialized = serde_json::to_string(&res).unwrap();
 
         // processing the imported data
-        file_contents = file_contents.replace("\n", "").replace(" ", "");
-        res_serialized = res_serialized.replace("\n", "").replace(" ", "");
+        file_contents = file_contents.replace('\n', "").replace(' ', "");
+        res_serialized = res_serialized.replace('\n', "").replace(' ', "");
 
         assert_eq!(res_serialized, file_contents);
     }
