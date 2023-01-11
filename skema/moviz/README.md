@@ -18,5 +18,5 @@ accessed by going to `http://localhost:5000` in your web browser.
 invocation below (this is useful for developers).
 
 ```
-flask --app main --debug run
+flast --app main --debug run
 ```
