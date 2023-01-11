@@ -16,8 +16,6 @@ from utils.helper_functions import (
 
 from utils.init import init
 
-# def drawWOPIO(data, g):
-
 
 def draw_graph(gromet, program_name: str):
     data = gromet.to_dict()
@@ -151,16 +149,4 @@ def draw_graph(gromet, program_name: str):
                     attr = data.get("attributes")[bf.get("contents") - 1]
                     if attr.get("value").get("b") != None:
                         for b in attr.get("value").get("b"):
-
-                            g.edge(
-                                bf.get("invisNode"),
-                                b.get("invisNode"),
-                                ltail=bf.get("node"),
-                                lhead=b.get("node"),
-                                dir="forward",
-                                arrowhead="normal",
-                                color="brown",
-                                style="dashed",
-                            )
-
-    return g
+                            g.edge(bf["node"], b.get("node"))
