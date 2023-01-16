@@ -26,7 +26,7 @@ def visualize_single_file(filepath) -> str:
 
 
 @app.route("/")
-# @app.route("/index")
+@app.route("/index")
 def execute():
 
     cwd = Path(__file__).parents[0]
