@@ -6,8 +6,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from skema.program_analysis.multi_file_ingester import process_file_system
+from skema.program_analysis.single_file_ingester import process_file
 from skema.utils.fold import dictionary_to_gromet_json, del_nulls
 
+
+class Module(BaseModel):
+    file: str
+    blob: str
 
 class System(BaseModel):
     files: List[str]
@@ -15,11 +20,23 @@ class System(BaseModel):
     system_name: str
     root_name: str
 
-
 app = FastAPI()
 
+@app.post("/single")
+async def root(module: Module):
+    with tempfile.TemporaryDirectory() as tmp:
+        full_path = os.path.join(tmp, module.file)
+        with open(full_path, "w") as f:
+            f.write(module.blob)
 
-@app.post("/")
+        # Run pipeline
+        gromet_collection = process_file(full_path, False)
+
+    # Convert output to json
+    gromet_collection_dict = gromet_collection.to_dict()
+    return dictionary_to_gromet_json(del_nulls(gromet_collection_dict))
+
+@app.post("/multi")
 async def root(system: System):
     # Create a tempory directory to store module
     with tempfile.TemporaryDirectory() as tmp:
