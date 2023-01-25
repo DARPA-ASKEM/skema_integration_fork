@@ -41,12 +41,12 @@ async def root(system: System):
         " get a GroMEt FN Module collection back."
     ),
 )
-async def root(file: UploadFile = File(), system_name: str = ""):
-    system = zip_to_system(file, system_name)
+async def root(file: UploadFile = File()):
+    system = zip_to_system(file)
     gromet_collection = process_file_system(system.system_name, system, None)
     return dictionary_to_gromet_json(del_nulls(gromet_collection.to_dict()))
 
-def zip_to_system(file: UploadFile, system_name: str) -> System:
+def zip_to_system(file: UploadFile) -> System:
     with ZipFile(BytesIO(file.file.read()), "r") as zip:
         
         file_list = [f for f in zip.namelist() if f.endswith(".py")]
@@ -56,6 +56,12 @@ def zip_to_system(file: UploadFile, system_name: str) -> System:
             with zip.open(path) as f:
                 blobs.append(f.read())
   
-        system_name = system_name
+        system_name = file.filename.strip(".zip")
         root_name = file.filename.strip(".zip")
+        
+    print("-------------------------------")
+    print(file_list)
+    print(system_name)
+    print(root_name)
+    print("--------------------------------")
     return System(files=file_list, blobs=blobs, system_name=system_name, root_name=root_name)

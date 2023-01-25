@@ -29,7 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("system_name", type=str)
     args = parser.parse_args()
 
-    file = {"file": open(args.file_path, "rb"), "system_name": args.system_name}
+    file = {"file": open(args.file_path, "rb")}
     response = requests.post(args.url, files=file)
 
     if args.write:
