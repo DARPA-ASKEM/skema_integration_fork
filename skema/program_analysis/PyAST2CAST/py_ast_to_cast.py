@@ -1562,48 +1562,57 @@ class PyASTToCAST:
             BinaryOp: A BinaryOp node, which in this case will hold a boolean
             operation
         """
+        try:
+            ops = {
+                ast.And: BinaryOperator.AND,
+                ast.Or: BinaryOperator.OR,
+                ast.Eq: BinaryOperator.EQ,
+                ast.NotEq: BinaryOperator.NOTEQ,
+                ast.Lt: BinaryOperator.LT,
+                ast.LtE: BinaryOperator.LTE,
+                ast.Gt: BinaryOperator.GT,
+                ast.GtE: BinaryOperator.GTE,
+                ast.In: BinaryOperator.IN,
+                ast.NotIn: BinaryOperator.NOTIN,
+                ast.IsNot: BinaryOperator.NOTIS,
+                ast.Is: BinaryOperator.IS,
+            }
 
-        ops = {
-            ast.And: BinaryOperator.AND,
-            ast.Or: BinaryOperator.OR,
-            ast.Eq: BinaryOperator.EQ,
-            ast.NotEq: BinaryOperator.NOTEQ,
-            ast.Lt: BinaryOperator.LT,
-            ast.LtE: BinaryOperator.LTE,
-            ast.Gt: BinaryOperator.GT,
-            ast.GtE: BinaryOperator.GTE,
-            ast.In: BinaryOperator.IN,
-            ast.NotIn: BinaryOperator.NOTIN,
-            ast.IsNot: BinaryOperator.NOTIS,
-            ast.Is: BinaryOperator.IS,
-        }
+            # Fetch the first element (which is in left)
+            left = node.left
 
-        # Fetch the first element (which is in left)
-        left = node.left
+            # Grab the first comparison operation
+            op = ops[type(node.ops.pop())]
 
-        # Grab the first comparison operation
-        op = ops[type(node.ops.pop())]
+            # If we have more than one operand left, then we 'recurse' without the leftmost
+            # operand and the first operator
+            if len(node.comparators) > 1:
+                node.left = node.comparators.pop()
+                right = node
+            else:
+                right = node.comparators[0]
 
-        # If we have more than one operand left, then we 'recurse' without the leftmost
-        # operand and the first operator
-        if len(node.comparators) > 1:
-            node.left = node.comparators.pop()
-            right = node
-        else:
-            right = node.comparators[0]
+            ref = [
+                SourceRef(
+                    source_file_name=self.filenames[-1],
+                    col_start=node.col_offset,
+                    col_end=node.end_col_offset,
+                    row_start=node.lineno,
+                    row_end=node.end_lineno,
+                )
+            ]
+            l = self.visit(left, prev_scope_id_dict, curr_scope_id_dict)
+            r = self.visit(right, prev_scope_id_dict, curr_scope_id_dict)
+            return [BinaryOp(op, l[0], r[0], source_refs=ref)]
 
-        ref = [
-            SourceRef(
-                source_file_name=self.filenames[-1],
-                col_start=node.col_offset,
-                col_end=node.end_col_offset,
-                row_start=node.lineno,
-                row_end=node.end_lineno,
-            )
-        ]
-        l = self.visit(left, prev_scope_id_dict, curr_scope_id_dict)
-        r = self.visit(right, prev_scope_id_dict, curr_scope_id_dict)
-        return [BinaryOp(op, l[0], r[0], source_refs=ref)]
+        except Exception as e:
+            print(
+            f"Error in visitor for {type(node)} which has source ref information {node.lineno}"
+        )
+            print(
+            f"Error in visitor for {type(node)} which has source ref information {node.end_lineno}"
+        )
+            raise e
 
     @visit.register
     def visit_Constant(
@@ -3727,7 +3736,9 @@ class PyASTToCAST:
                     ref,
                 )
             ]
-
+        print("HERE")
+        print(type(slc))
+        print("HERE")
         """
         if isinstance(slc,ast.Slice):
             if slc.lower is not None:
