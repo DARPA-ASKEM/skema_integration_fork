@@ -9,7 +9,7 @@ import argparse
 
 
 def system_to_json(
-    file_path: str 
+    file_path: str, 
 ) -> str:
     
     with open(file_path, "r") as f:
@@ -53,8 +53,8 @@ if __name__ == "__main__":
     )
     response = requests.post(args.url, data=data)
 
-    system_name = json.loads(data)["system_name"]
     if args.write:
+        system_name = json.loads(data)["system_name"]
         with open(f"{system_name}--Gromet-FN-auto.json", "w") as f:
             f.write(response.json())
     else:
