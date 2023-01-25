@@ -24,10 +24,12 @@ if __name__ == "__main__":
         ),
     )
 
+ 
     parser.add_argument("file_path", type=str)
+    parser.add_argument("system_name", type=str)
     args = parser.parse_args()
 
-    file = {"file": open(args.file_path, "rb")}
+    file = {"file": open(args.file_path, "rb"), "system_name": args.system_name}
     response = requests.post(args.url, files=file)
 
     if args.write:

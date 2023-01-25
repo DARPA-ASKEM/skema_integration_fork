@@ -1,5 +1,6 @@
 import os
 import tempfile
+import glob
 
 from fastapi import FastAPI
 from fastapi import File, UploadFile
@@ -40,20 +41,21 @@ async def root(system: System):
         " get a GroMEt FN Module collection back."
     ),
 )
-async def root(file: UploadFile = File()):
-    system = zip_to_system(file)
+async def root(file: UploadFile = File(), system_name: str = ""):
+    system = zip_to_system(file, system_name)
     gromet_collection = process_file_system(system.system_name, system, None)
     return dictionary_to_gromet_json(del_nulls(gromet_collection.to_dict()))
 
-def zip_to_system(file: UploadFile) -> System:
+def zip_to_system(file: UploadFile, system_name: str) -> System:
     with ZipFile(BytesIO(file.file.read()), "r") as zip:
-        with zip.open("files.txt") as f:
-            file_list = f.readlines()
-            file_list = [file.strip().decode("ascii") for file in file_list]
-            print(file_list)
+        
+        file_list = [f for f in zip.namelist() if f.endswith(".py")]
+    
         blobs=[]
         for path in file_list:
             with zip.open(path) as f:
                 blobs.append(f.read())
   
-    return System(files=file_list, blobs=blobs, system_name="test", root_name="test")
+        system_name = system_name
+        root_name = file.filename.strip(".zip")
+    return System(files=file_list, blobs=blobs, system_name=system_name, root_name=root_name)
