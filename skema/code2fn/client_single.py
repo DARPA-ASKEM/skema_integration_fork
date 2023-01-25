@@ -19,10 +19,8 @@ def system_to_json(
     
     return json.dumps(
         {
-            "files": [system_name],
             "blobs": [blob],
             "system_name": system_name,
-            "root_name": ""  
         }
     )
 
@@ -48,9 +46,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+  
     data = system_to_json(
         args.file_path
     )
+    print(data)
     response = requests.post(args.url, data=data)
 
     if args.write:

@@ -48,7 +48,6 @@ from typing import Union
 import tempfile
 
 def process_file(system_source: Union[str,System], write_to_file=False):
-
     if isinstance(system_source, str):
         system_name = os.path.basename(system_source).strip(".py")
         root_path = os.path.dirname(system_source)
@@ -75,7 +74,10 @@ def process_file_system(system_name,  system_source: Union[str, System], files=N
         file_list = open(files, "r").readlines()
         root_dir = system_source.strip() 
     elif isinstance(system_source, System):
-        file_list = system_source.files
+        if system_source.files:
+            file_list = system_source.files
+        else:
+            file_list = [str(i) for i in range(len(system_source.blobs))] # Allows us to support the case where files is empty
         root_dir = ""  # Required for backwards compatibility with path as input
 
     
