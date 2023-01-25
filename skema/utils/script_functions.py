@@ -98,7 +98,7 @@ def process_file_system(system_name,  system_source: Union[str, System], files=N
             full_file = system_source.blobs[index]
         
         try:
-            cast = python_to_cast(full_file, isinstance(system_source, System), cast_obj=True)
+            cast = python_to_cast(full_file, isinstance(system_source, System), py_filename=f, cast_obj=True)
             generated_gromet = ann_cast_pipeline(
                 cast, gromet=True, to_file=False, from_obj=True
             )
@@ -150,7 +150,8 @@ def process_file_system(system_name,  system_source: Union[str, System], files=N
 
 def python_to_cast(
     py_source, # Can be either a string or a path
-    py_source_is_str=False,
+    py_source_is_blob=False,
+    py_filename="",
     agraph=False,
     astprint=False,
     std_out=False,
@@ -158,9 +159,9 @@ def python_to_cast(
     legacy=False,
     cast_obj=False,
 ):
-    if py_source_is_str:
+    if py_source_is_blob:
         file_contents = py_source 
-        file_name = "" # Required for backwards compatibility
+        file_name = py_filename # Required for backwards compatibility
     else:
         # Open Python file as a giant string
         with open(py_source, "r") as f:
