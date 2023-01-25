@@ -8,17 +8,21 @@ import requests
 import argparse
 
 
-def module_to_json(
+def system_to_json(
     file_path: str 
 ) -> str:
     
     with open(file_path, "r") as f:
         blob = f.read()
 
+    system_name = os.path.basename(file_path).strip(".py")
+    
     return json.dumps(
         {
-            "file": file_path,
-            "blob": blob
+            "files": [system_name],
+            "blobs": [blob],
+            "system_name": system_name,
+            "root_name": ""  
         }
     )
 
@@ -26,16 +30,11 @@ def module_to_json(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--host",
-        default="localhost",
+        "--url",
+        default="http://localhost:8000/fn-given-filepaths",
         help="Host machine where the Code2FN service is running",
     )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Port on which the Code2FN service is running",
-    )
+
     parser.add_argument(
         "--write",
         action="store_true",
@@ -46,14 +45,17 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("file_path", type=str)
+
     args = parser.parse_args()
 
-    url = f"http://{args.host}:{args.port}/single"
-    data = module_to_json(args.file_path)
-    response = requests.post(url, data=data)
+    data = system_to_json(
+        args.file_path
+    )
+    response = requests.post(args.url, data=data)
 
+    system_name = json.loads(data)["system_name"]
     if args.write:
-        with open(f"{args.system_name}--Gromet-FN-auto.json", "w") as f:
+        with open(f"{system_name}--Gromet-FN-auto.json", "w") as f:
             f.write(response.json())
     else:
         print(response.json())

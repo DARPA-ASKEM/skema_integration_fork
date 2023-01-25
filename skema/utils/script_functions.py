@@ -43,11 +43,42 @@ from skema.program_analysis.CAST2GrFN.ann_cast.to_gromet_pass import (
     ToGrometPass,
 )
 
+from skema.code2fn.defined_types import System
+from typing import Union
+import tempfile
 
-def process_file_system(system_name, path, files, write_to_file=False):
-    root_dir = path.strip()
-    file_list = open(files, "r").readlines()
+def process_file(system_source: Union[str,System], write_to_file=False):
 
+    if isinstance(system_source, str):
+        system_name = os.path.basename(system_source).strip(".py")
+        root_path = os.path.dirname(system_source)
+
+        # Create temporary system_filepaths file
+        tmp = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        tmp.write(os.path.basename(system_source))
+        tmp.close()
+
+        gromet_collection = process_file_system(system_name, root_path, tmp.name, write_to_file)
+
+        # Delete temporary system_filepaths file
+        os.unlink(tmp.name)
+
+    elif isinstance(system_source, System):
+        system_name = system_source.system_name 
+        gromet_collection = process_file_system(system_name, system_source, None, write_to_file)
+
+    return gromet_collection
+
+def process_file_system(system_name,  system_source: Union[str, System], files=None, write_to_file=False):
+    # Create list of files either by getting it directly from the System, or by opening and reading an external file 
+    if isinstance(system_source, str):
+        file_list = open(files, "r").readlines()
+        root_dir = system_source.strip() 
+    elif isinstance(system_source, System):
+        file_list = system_source.files
+        root_dir = ""  # Required for backwards compatibility with path as input
+
+    
     module_collection = GrometFNModuleCollection(
         schema_version="0.1.5",
         name=system_name,
@@ -56,18 +87,16 @@ def process_file_system(system_name, path, files, write_to_file=False):
         executables=[],
     )
 
-    for f in file_list:
-        full_file = os.path.join(os.path.normpath(root_dir), f.rstrip("\n"))
-
-        # Open the file
-        # TODO: Do we want to open the CAST or the Python source?
-        #  If we open the Python source then we need to generate its CAST and then generate its GroMEt after
-        #  I'm thinking for now we open the CAST, and generate GroMEt
-        #  As a next-step we can incorporate the Python -> CAST step
-        print(full_file.rstrip())
-
+    for index,f in enumerate(file_list):
+        # Get either the full path to the source file, or the source file as a string
+        if isinstance(system_source, str):
+            full_file = os.path.join(os.path.normpath(root_dir), f.rstrip("\n"))
+        elif isinstance(system_source, System):
+            # Convert module json to Python obj and get file blob as str
+            full_file = system_source.blobs[index]
+        
         try:
-            cast = python_to_cast(full_file, cast_obj=True)
+            cast = python_to_cast(full_file, isinstance(system_source, System), cast_obj=True)
             generated_gromet = ann_cast_pipeline(
                 cast, gromet=True, to_file=False, from_obj=True
             )
@@ -82,9 +111,10 @@ def process_file_system(system_name, path, files, write_to_file=False):
                 os.path.normpath(root_dir)
             )  # We just need the last directory of the path, not the complete path
             os_module_path = os.path.join(source_directory, f)
-            python_module_path = os_module_path.replace("/", ".").replace(
-                ".py", ""
-            )
+           
+           # Normalize the path across os and then convert to module dot notation
+            python_module_path = ".".join(os.path.normpath(os_module_path).split(os.path.sep))
+            python_module_path = python_module_path.replace(".py", "").strip()
             module_collection.module_index.append(python_module_path)
 
             # Done: Determine how we know a gromet goes in the 'executable' field
@@ -101,8 +131,7 @@ def process_file_system(system_name, path, files, write_to_file=False):
                 if fn.b[0].function_type == "FUNCTION"
             ]
             if "main" in defined_functions:
-                module_collection.executables.append(python_module_path)
-
+                module_collection.executables.append(len(module_collection.module_index))
         except ImportError:
             print("FAILURE")
 
@@ -118,7 +147,8 @@ def process_file_system(system_name, path, files, write_to_file=False):
 
 
 def python_to_cast(
-    pyfile_path,
+    py_source, # Can be either a string or a path
+    py_source_is_str=False,
     agraph=False,
     astprint=False,
     std_out=False,
@@ -126,19 +156,15 @@ def python_to_cast(
     legacy=False,
     cast_obj=False,
 ):
-    # Open Python file as a giant string
-    file_handle = open(pyfile_path)
-    file_contents = file_handle.read()
-    file_handle.close()
-    file_name = pyfile_path.split("/")[-1]
-
-    # Count the number of lines in the file
-    file_handle = open(pyfile_path)
-    file_list = file_handle.readlines()
-    line_count = 0
-    for l in file_list:
-        line_count += 1
-    file_handle.close()
+    if py_source_is_str:
+        file_contents = py_source 
+        file_name = "" # Required for backwards compatibility
+    else:
+        # Open Python file as a giant string
+        with open(py_source, "r") as f:
+            file_contents = f.read()
+            file_name = os.path.basename(py_source)
+    line_count = file_contents.count("\n") 
 
     # Create a PyASTToCAST Object
     if legacy:
@@ -153,25 +179,10 @@ def python_to_cast(
         print("AST Printing Currently Disabled")
         pass
 
-    # 'Root' the current working directory so that it's where the
-    # Source file we're generating CAST for is (for Import statements)
-    old_path = os.getcwd()
-    idx = pyfile_path.rfind("/")
-
-    if idx > -1:
-        curr_path = pyfile_path[0:idx]
-        os.chdir(curr_path)
-    else:
-        curr_path = "./" + pyfile_path
-
-    # os.chdir(curr_path)
-
     # Parse the python program's AST and create the CAST
     contents = ast.parse(file_contents)
     C = convert.visit(contents, {}, {})
     C.source_refs = [SourceRef(file_name, None, None, 1, line_count)]
-
-    os.chdir(old_path)
     out_cast = cast.CAST([C], "python")
 
     if agraph:
