@@ -149,5 +149,14 @@ def draw_graph(gromet, program_name: str):
                     attr = data.get("attributes")[bf.get("contents") - 1]
                     if attr.get("value").get("b") != None:
                         for b in attr.get("value").get("b"):
-                            g.edge(bf["node"], b.get("node"))
+                            g.edge(
+                                bf.get("invisNode"),
+                                b.get("invisNode"),
+                                ltail=bf.get("node"),
+                                lhead=b.get("node"),
+                                dir="forward",
+                                arrowhead="normal",
+                                color="brown",
+                                style="dashed",
+                            )
     return g
