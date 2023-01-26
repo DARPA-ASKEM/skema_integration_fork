@@ -24,7 +24,7 @@ def draw_graph(gromet, program_name: str):
     g = graphviz.Graph(
         "G",
         filename=program_name,
-        engine="fdp",
+        engine="dot",
         format="png",
         directory="static",
     )
