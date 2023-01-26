@@ -1,6 +1,3 @@
-
-
-
 from skema.program_analysis.CAST2GrFN.ann_cast.cast_to_annotated_cast import (
     CastToAnnotatedCastVisitor,
 )
@@ -26,7 +23,6 @@ from skema.program_analysis.CAST2GrFN.ann_cast.lambda_expression_pass import (
 from skema.program_analysis.CAST2GrFN.ann_cast.to_gromet_pass import (
     ToGrometPass,
 )
-
 
 
 def run_cast_to_gromet_pipeline(cast):

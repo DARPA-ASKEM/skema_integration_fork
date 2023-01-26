@@ -11,6 +11,7 @@ import base64
 
 app = Flask(__name__)
 
+
 def visualize_single_file(filepath) -> str:
     """Returns base64-encoded string representing the Graphviz layout"""
     program_name = filepath.stem
@@ -23,6 +24,7 @@ def visualize_single_file(filepath) -> str:
     output = str(base64.b64encode(graph.pipe()), encoding="utf-8")
     return output
 
+
 @app.route("/")
 @app.route("/index")
 def execute():
@@ -31,6 +33,7 @@ def execute():
     filepath = cwd / "inputs/CHIME_SIR_core.py"
     output = visualize_single_file(filepath)
     return render_template("index.html", output_image=output)
+
 
 @app.route("/visualize/<filename>/")
 def visualize_single_python_file(filename):
